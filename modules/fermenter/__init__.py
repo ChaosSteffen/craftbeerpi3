@@ -11,6 +11,12 @@ class Fermenter(DBModel):
     __table_name__ = "fermenter"
     __json_fields__ = ["config"]
 
+    def heater_only(self):
+        return (self.heater is not None) and (self.cooler is None)
+
+    def cooler_only(self):
+        return (self.heater is None) and (self.cooler is not None)
+
 class FermenterStep(DBModel):
     __fields__ = ["name", "days", "hours", "minutes", "temp", "direction", "order", "state", "start", "end", "timer_start", "fermenter_id"]
     __table_name__ = "fermenter_step"
@@ -184,7 +190,7 @@ class FermenterView(BaseView):
 
             inactive.state = 'A'
             inactive.start = time.time()
-            inactive.direction = "C" if current_temp >= inactive.temp else "H"
+            inactive.direction = self.calculate_direction(fermenter, current_temp, inactive.temp)
             FermenterStep.update(**inactive.__dict__)
 
             self.postTargetTemp(id, inactive.temp)
@@ -210,7 +216,7 @@ class FermenterView(BaseView):
     def toggle(self, id):
         fermenter = cbpi.cache.get(self.cache_key)[id]
         try:
-            print fermenter.state
+            print(fermenter.state)
             if fermenter.state is False:
                 # Start controller
                 if fermenter.logic is not None:
@@ -236,7 +242,7 @@ class FermenterView(BaseView):
                 cbpi.emit("UPDATE_FERMENTER", cbpi.cache.get(self.cache_key).get(id))
 
         except Exception as e:
-            print e
+            print(e)
             cbpi.notify("Toogle Fementer Controller failed", "Pleae check the %s configuration" % fermenter.name,
                         type="danger", timeout=None)
             return ('', 500)
@@ -283,6 +289,14 @@ class FermenterView(BaseView):
                         pass
             except Exception as e:
                 pass
+
+    def calculate_direction(self, fermenter, current_temp, target_temp):
+        if fermenter.cooler_only():
+            "C"
+        elif fermenter.heater_only():
+            "H"
+        else:
+            "C" if current_temp >= target_temp else "H"
 
 
 @cbpi.backgroundtask(key="read_target_temps_fermenter", interval=5)
