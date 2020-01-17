@@ -1,6 +1,6 @@
 from modules import cbpi
 
-class ActorController(object):
+class ActorControllerMixin(object):
     @cbpi.try_catch(None)
     def actor_on(self, power=100, id=None):
         id = id or self.heater
@@ -16,7 +16,7 @@ class ActorController(object):
         id = id or self.heater
         self.api.actor_power(int(id), power)
 
-class SensorController(object):
+class SensorControllerMixin(object):
     @cbpi.try_catch(None)
     def get_sensor_value(self, id=None):
         id = id or self.sensor
@@ -55,7 +55,7 @@ class ControllerBase(object):
     def run(self):
         pass
 
-class KettleController(ControllerBase, ActorController, SensorController):
+class KettleController(ControllerBase, ActorControllerMixin, SensorControllerMixin):
 
     @staticmethod
     def chart(kettle):
@@ -88,7 +88,7 @@ class KettleController(ControllerBase, ActorController, SensorController):
         id = id or self.kettle_id
         return self.api.cache.get("kettle").get(id)
 
-class FermenterController(ControllerBase, ActorController, SensorController):
+class FermenterController(ControllerBase, ActorControllerMixin, SensorControllerMixin):
 
     @staticmethod
     def chart(fermenter):
